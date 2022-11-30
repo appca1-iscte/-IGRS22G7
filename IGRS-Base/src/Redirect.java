@@ -23,8 +23,36 @@ public class Redirect extends SipServlet {
         String contactHeader = request.getHeader("Contact");
         String aor = getAttr(toHeader, "sip:");
         String contact = getAttr(contactHeader, "sip:");
-        registrarDB.put(aor, contact);
-        request.createResponse(200).send();
+
+
+        String expires = request.getHeader("Expires");
+        // linphone
+        if (expires != null) {
+
+            if(expires.equals("0")){
+                registrarDB.remove(aor);
+                request.createResponse(200).send();
+            } else{
+                registrarDB.put(aor, contact);
+                request.createResponse(200).send();
+            }
+
+
+        }
+        // twinkle
+        else {
+            if(contactHeader.split("=")[1].equals("0")){
+                registrarDB.remove(aor);
+                request.createResponse(200).send();
+            } else{
+                registrarDB.put(aor, contact);
+                request.createResponse(200).send();
+            }
+
+
+        }
+
+
     }
 
     @Override
@@ -34,9 +62,7 @@ public class Redirect extends SipServlet {
         if (!registrarDB.containsKey(aor)) {
             request.createResponse(404).send();
         } else {
-            SipServletResponse response = request.createResponse(300);
-            response.setHeader("Contact", registrarDB.get(aor));
-            response.send();
+            request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get(aor)));
         }
     }
 
