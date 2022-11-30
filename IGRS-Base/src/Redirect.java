@@ -71,15 +71,32 @@ public class Redirect extends SipServlet {
 
     }
 
+    //2ºparte do Projeto, Conferências
+    /*@Override
+    protected void doResponse(SipServletResponse sipServletResponse) throws ServletException, IOException {
+        super.doResponse(sipServletResponse);
+    }*/
+
+    /*@Override
+    protected void doBye(SipServletRequest sipServletRequest) throws ServletException, IOException {
+        super.doBye(sipServletRequest);
+    }*/
+
+
+
     /**
      * Customs functions
      */
     protected boolean verifyDomain(SipServletRequest request) {
-        return false;
+
+        String toHeader = request.getHeader("From");
+        return toHeader.contains("@acme.pt");
     }
 
     protected boolean verifyUserType(SipServletRequest request, String type) {
-        return false;
+
+        String toHeader = request.getHeader("From");
+        return toHeader.contains(type);
     }
 
     /**
