@@ -67,12 +67,15 @@ public class Redirect extends SipServlet {
 
     }
 
+    //Aqui é que é feita a chamada
     @Override
     protected void doInvite(SipServletRequest request) throws IOException, TooManyHopsException, ServletParseException {
         String aor = getAttr(request.getHeader("To"), "sip:");
 
         if (!registrarDB.containsKey(aor)) {
             request.createResponse(404).send();
+        } else if (verifyComum(request) & aor.contains("alerta")) {
+            request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get(aor)));
         } else {
             request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get(aor)));
         }
