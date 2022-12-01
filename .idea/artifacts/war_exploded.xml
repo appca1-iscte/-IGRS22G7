@@ -3,16 +3,16 @@
     <output-path>$PROJECT_DIR$/out/artifacts/war_exploded</output-path>
     <root id="root">
       <element id="directory" name="WEB-INF">
-        <element id="directory" name="classes">
-          <element id="module-output" name="IGRS" />
-        </element>
         <element id="directory" name="lib">
           <element id="library" level="project" name="servlet" />
           <element id="library" level="project" name="sipservlet" />
         </element>
-        <element id="file-copy" path="$PROJECT_DIR$/sip.xml" />
-        <element id="file-copy" path="$PROJECT_DIR$/sip-app_1_0.dtd" />
-        <element id="file-copy" path="$PROJECT_DIR$/web.xml" />
+        <element id="directory" name="classes">
+          <element id="module-output" name="-IGRS22G7" />
+        </element>
+        <element id="file-copy" path="$PROJECT_DIR$/IGRS-Base/web.xml" />
+        <element id="file-copy" path="$PROJECT_DIR$/IGRS-Base/sip.xml" />
+        <element id="file-copy" path="$PROJECT_DIR$/IGRS-Base/sip-app_1_0.dtd" />
       </element>
     </root>
   </artifact>

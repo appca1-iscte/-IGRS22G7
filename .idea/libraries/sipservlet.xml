@@ -1,9 +1,7 @@
 <component name="libraryTable">
-  <library name="lib">
+  <library name="sipservlet">
     <CLASSES>
       <root url="jar://$PROJECT_DIR$/IGRS-Base/lib/sipservlet.jar!/" />
-      <root url="jar://$PROJECT_DIR$/IGRS-Base/lib/sip-equips-signal.jar!/" />
-      <root url="jar://$PROJECT_DIR$/IGRS-Base/lib/servlet.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

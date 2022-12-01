@@ -32,9 +32,14 @@ public class Redirect extends SipServlet {
             if(expires.equals("0")){
                 registrarDB.remove(aor);
                 request.createResponse(200).send();
-            } else{
-                registrarDB.put(aor, contact);
-                request.createResponse(200).send();
+            } else {
+                if (verifyDomain(request)) {
+                    registrarDB.put(aor, contact);
+                    request.createResponse(200).send();
+                } else {
+                    //Utilizadores que não pertençam ao domínio @acme.pt levam um 403
+                    request.createResponse(403).send();
+                }
             }
 
 
@@ -45,8 +50,13 @@ public class Redirect extends SipServlet {
                 registrarDB.remove(aor);
                 request.createResponse(200).send();
             } else{
-                registrarDB.put(aor, contact);
-                request.createResponse(200).send();
+                if (verifyDomain(request)) {
+                    registrarDB.put(aor, contact);
+                    request.createResponse(200).send();
+                } else {
+                    //Utilizadores que não pertençam ao domínio @acme.pt levam um 403
+                    request.createResponse(403).send();
+                }
             }
 
 
