@@ -1,3 +1,5 @@
+import com.sun.org.apache.xpath.internal.functions.FuncFalse;
+
 import javax.servlet.ServletException;
 import javax.servlet.sip.*;
 import java.io.IOException;
@@ -78,14 +80,39 @@ public class Redirect extends SipServlet {
 
     @Override
     protected void doMessage(SipServletRequest request) throws ServletException, IOException {
+        String aor = getAttr(request.getHeader("To"), "sip:");
+
+        if(!registrarDB.containsKey(aor) & !aor.contains("alerta") ){
+            request.createResponse(401).send();
+        }else{
+            request.createResponse(200,request.getContent().toString());
+        }
 
     }
 
+    //alteração do seu estado (ligado/não-ligado)
+    @Override
+    protected void doPublish(SipServletRequest sipServletRequest) throws ServletException, IOException {
+        super.doPublish(sipServletRequest);
+    }
+
     //2ºparte do Projeto, Conferências
-    /*@Override
+    @Override
     protected void doResponse(SipServletResponse sipServletResponse) throws ServletException, IOException {
-        super.doResponse(sipServletResponse);
-    }*/
+        String aor = getAttr(sipServletResponse.getHeader("To"), "sip:");
+
+        if (!registrarDB.containsKey(aor) & !verifyGestor(sipServletResponse.getRequest()) ) {
+            sipServletResponse.getRequest().createResponse(404).send();
+
+        }else {
+
+            sipServletResponse.getRequest().createResponse(200).send();
+
+        }
+
+    }
+
+
 
     /*@Override
     protected void doBye(SipServletRequest sipServletRequest) throws ServletException, IOException {
@@ -109,6 +136,28 @@ public class Redirect extends SipServlet {
         return toHeader.contains(type);
     }
 
+    protected boolean verifyGestor(SipServletRequest request) {
+
+        String toHeader = request.getHeader("From");
+        return toHeader.contains("gestor@acme.pt");
+    }
+
+    protected boolean verifyColaborador(SipServletRequest request) {
+
+        String toHeader = request.getHeader("From");
+        return toHeader.contains("colaborador");
+    }
+
+
+    protected boolean verifyComum(SipServletRequest request) {
+
+        String toHeader = request.getHeader("From");
+        if(!verifyGestor(request) & !verifyColaborador( request)){
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Auxiliary function for extracting attribute values
      *
@@ -116,6 +165,8 @@ public class Redirect extends SipServlet {
      * @param attr the attr name
      * @return attr name and value
      */
+
+    //Vai retornar -> sip:x@domain.pt
     protected String getAttr(String str, String attr) {
         int indexStart = str.indexOf(attr);
         int indexStop = str.indexOf(">", indexStart);
