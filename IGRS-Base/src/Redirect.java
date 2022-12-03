@@ -72,31 +72,57 @@ public class Redirect extends SipServlet {
     protected void doInvite(SipServletRequest request) throws IOException, TooManyHopsException, ServletParseException {
         String aor = getAttr(request.getHeader("To"), "sip:");
 
+
         if (!registrarDB.containsKey(aor)) {
-            request.createResponse(404).send();
-        } else if (verifyComum(request) & aor.contains("alerta")) {
-            request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get(aor)));
+            if (verifyComum(request) && registrarDB.containsKey("sip:gestor@acme.pt") && aor.equals("sip:alerta@acme.pt")) {
+                request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get("sip:gestor@acme.pt")));
+            } else {
+                request.createResponse(404).send();
+            }
         } else {
+
             request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get(aor)));
+
         }
+
     }
+
 
     @Override
     protected void doMessage(SipServletRequest request) throws ServletException, IOException {
         String aor = getAttr(request.getHeader("To"), "sip:");
 
-        if(!registrarDB.containsKey(aor) & !aor.contains("alerta") ){
-            request.createResponse(401).send();
-        }else{
-            request.createResponse(200,request.getContent().toString());
+        if(!registrarDB.containsKey(aor)) {
+            if (verifyComum(request) && aor.contains("alerta")) {
+
+                request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get("sip:gestor@acme.pt")));
+                request.createResponse(200).send();
+            } else if (verifyGestor(request) && aor.contains("alerta")) {
+
+                //Analisar o conteúdo da mensagem -perceber se é uma ADD (adicionar colaborador) ou REMOVE (remover o colaborador)
+
+                /*  //Criar uma mensagem
+            SipServletRequest res = sipFactory.createRequest(
+                    request.getApplicationSession(),
+                    "MESSAGE",
+                    "source",
+                    "destination"
+            );
+            res.setContent("text".getBytes(), "text/plain");
+            res.send();
+            request.createResponse(200).send();*/
+
+            } else {
+                request.createResponse(401).send();
+            }
         }
 
     }
 
-    //alteração do seu estado (ligado/não-ligado)
+    //alteração do seu estado (ligado(188)/não-ligado(190))
     @Override
     protected void doPublish(SipServletRequest sipServletRequest) throws ServletException, IOException {
-        super.doPublish(sipServletRequest);
+        if(sipServletRequest.getHeader("Content-Length").equals("190")){}
     }
 
     //2ºparte do Projeto, Conferências
@@ -145,17 +171,11 @@ public class Redirect extends SipServlet {
         return toHeader.contains("gestor@acme.pt");
     }
 
-    protected boolean verifyColaborador(SipServletRequest request) {
-
-        String toHeader = request.getHeader("From");
-        return toHeader.contains("colaborador");
-    }
-
 
     protected boolean verifyComum(SipServletRequest request) {
 
         String toHeader = request.getHeader("From");
-        if(!verifyGestor(request) & !verifyColaborador( request)){
+        if(!verifyGestor(request) ){
             return true;
         }
         return false;
