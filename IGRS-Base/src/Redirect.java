@@ -3,14 +3,16 @@ import com.sun.org.apache.xpath.internal.functions.FuncFalse;
 import javax.servlet.ServletException;
 import javax.servlet.sip.*;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 public class Redirect extends SipServlet {
     static private Map<String, String> registrarDB;
     static private SipFactory sipFactory;
-
+    static private ArrayList<String> colaboradores_ative;
     /**
      * SipServlet functions
      */
@@ -92,71 +94,86 @@ public class Redirect extends SipServlet {
     @Override
     protected void doMessage(SipServletRequest request) throws ServletException, IOException {
         String aorT = getAttr(request.getHeader("To"), "sip:");
-
+        String aorF = getAttr(request.getHeader("From"), "sip:");
+        colaboradores_ative = new ArrayList<String>();
         log(aorT);
 
-        if (!registrarDB.containsKey(aorT) || aorT.contains("alerta")) {
+        if (registrarDB.containsKey(aorT) || aorT.contains("alerta")) {
+            String content = request.getContent().toString();
+            //Gestor para o Alerta
+            if (verifyGestor(request) && aorT.contains("alerta")) {
+                CreateMessage(request);
+                //ADD..................................................
+                if (content.contains("ADD") && content.contains("colaborador")) {
+                    colaboradores_ative.add(content.split(":")[1].toString());
+                }
+                for (int i = 0; i < colaboradores_ative.size(); i++) {
+                    log(colaboradores_ative.get(i));
+                }
 
-            //Gestor para Colaborador
+//...............................................................................
+// Remove.................................................
+                if (content.contains("REMOVE")) {
+                    log("Lista pre remove");
+                    for (int i = 0; i < colaboradores_ative.size(); i++) {
+                        log(colaboradores_ative.get(i));
+                    }
+                    for (int i = 0; i < colaboradores_ative.size(); i++) {
+                        if (colaboradores_ative.get(i).contains(content.split(":")[1].toString())) {
+                            colaboradores_ative.remove(i);
+                        }
+                    }
+                    log("Lista pos remove");
+                    for (int i = 0; i < colaboradores_ative.size(); i++) {
+                        log(colaboradores_ative.get(i));
+                    }
+                }
+        }
+
+            //........................................................................................
+
+            //From Gestor To Colaborador
             if (verifyGestor(request) && aorT.contains("colaborador")) {
-
-
-                String content = request.getContent().toString(); ////////RECEBR A MENSAGEM
                 log("-------------------------------------------");
                 log(content);
                 log("-------------------------------------------");
-                request.createResponse(200).send();
-
+                CreateMessage(request);
+            }
 
                 //Colaborador com Colaborador
-            } else if (verifyComum(request) && aorT.contains("colaborador")) {
-
-                //Analisar o conteúdo da mensagem -perceber se é uma ADD (adicionar colaborador) ou REMOVE (remover o colaborador) ou CONFERENCE
-                String content = request.getContent().toString();
+            if ( aorF.contains("colaborador")&& aorT.contains("colaborador")) {
                 log("-------------------------------------------");
                 log(content);
                 log("-------------------------------------------");
-                request.createResponse(200).send();
-
-
-                //Gestor para o Alerta
-            } else if (verifyGestor(request) && aorT.contains("alerta")) {
-
-                //Analisar o conteúdo da mensagem -perceber se é uma ADD (adicionar colaborador) ou REMOVE (remover o colaborador) ou CONFERENCE
-
-                //Percorrer o hashMap RegistrarDB e aplicar os comandos ao Colaboradores, se é para adicionar o colaborador ou removê-lo
-
-                request.createResponse(200).send();
-
-
-                //Colaborador para o Alerta
-            } else if (verifyComum(request) && aorT.contains("alerta")) {
+                CreateMessage(request);
+            }
+                //Comum para o Alerta
+            if (verifyComum(request) && aorT.contains("alerta")) {
 
                 request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get("sip:gestor@acme.pt")));
                 request.createResponse(200).send();
-
+            }
+            //From Colaborador To Gestor
+            if (aorT.contains("gestor") && aorF.contains("colaborador") ) {
+                log("-------------------------------------------");
+                log(content);
+                log("-------------------------------------------");
+                CreateMessage(request);
             }
 
         } else {
-
             request.createResponse(403).send();
-
         }
     }
 
 
 
-    /*  //Criar uma mensagem
-            SipServletRequest res = sipFactory.createRequest(
-                    request.getApplicationSession(),
-                    "MESSAGE",
-                    "source",
-                    "destination"
-            );
-            res.setContent("text".getBytes(), "text/plain");
-            res.send();
-            request.createResponse(200).send();*/
-
+    protected void CreateMessage(SipServletRequest request) throws ServletParseException, IOException {
+        SipServletRequest res = sipFactory.createRequest(request.getApplicationSession(),"MESSAGE","source","destination");
+        res.setContent("text".getBytes(), "text/plain");
+        res.send();
+        request.createResponse(200).send();
+    }
 
 
 
