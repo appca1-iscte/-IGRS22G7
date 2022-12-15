@@ -10,7 +10,6 @@ public class Redirect extends SipServlet {
     static private Map<String, String> registrarDB;
     static private SipFactory sipFactory;
     static private ArrayList<String> colaboradores_ative;
-    static private String c;
     /**
      * SipServlet functions
      */
@@ -19,7 +18,7 @@ public class Redirect extends SipServlet {
         sipFactory = (SipFactory) getServletContext().getAttribute(SIP_FACTORY);
         registrarDB = new HashMap<>();
         colaboradores_ative = new ArrayList<>();
-        c = null;
+
     }
 
     @Override
@@ -74,20 +73,19 @@ public class Redirect extends SipServlet {
     @Override
     protected void doInvite(SipServletRequest request) throws IOException, TooManyHopsException, ServletParseException {
         String aor = getAttr(request.getHeader("To"), "sip:");
-        if(c==null){
+        String from = getAttr(request.getHeader("From"), "sip:");
+
         if (!registrarDB.containsKey(aor)) {
             if (verifyComum(request) && registrarDB.containsKey("sip:gestor@acme.pt") && aor.equals("sip:alerta@acme.pt")) {
                 request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get("sip:gestor@acme.pt")));
+            } else if(aor.equals("sip:conference@acme.pt") && (from.equals("sip:gestor@acme.pt") || colaboradores_ative.contains(from))) {
+                request.getProxy().proxyTo(sipFactory.createURI("sip:conference@127.0.0.1:5070"));
             } else {
                 request.createResponse(404).send();
             }
         } else {
 
             request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get(aor)));
-        }
-        }
-        else {
-            request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get(c)));
         }
     }
 
@@ -115,6 +113,7 @@ public class Redirect extends SipServlet {
                     for (int i = 0; i < colaboradores_ative.size(); i++) {
                         log(colaboradores_ative.get(i));
                     }
+                    request.createResponse(200).send();
                 }
                 else if (content.contains("REMOVE")) {
                     log("Lista pre remove");
@@ -126,24 +125,35 @@ public class Redirect extends SipServlet {
                     for (int i = 0; i < colaboradores_ative.size(); i++) {
                         log(colaboradores_ative.get(i));
                     }
+                    request.createResponse(200).send();
                 }
                 /////////////////////////////////////////////////////////////////////////////////////////////////////
                 else if (content.contains("CONF")) {
                     for (String c1 : colaboradores_ative){
-                        c=c1;
-                        doInvite(request);
+                        SipServletRequest res = sipFactory.createRequest(
+                                request.getApplicationSession(),
+                                "MESSAGE",
+                                "sip:alerta@acme.pt",
+                                registrarDB.get(c1)
+                        );
+                        res.setContent("Conference, please call sip:conference@acme.pt", "text/plain");
+                        res.send();
                     }
-                    c=null;
+                    request.createResponse(200).send();
+                }
+                else if (content.contains("ALERTA")) {
+                    for (String c : colaboradores_ative){
+                        CreateMessage(request,registrarDB.get(c),"sip:gestor@acme.pt",content);
+                    }
+                    request.createResponse(200).send();
                 }
                 //////////////////////////////////////////////////////////////////////////////////////////
 
                 else {
-                    for (String c : colaboradores_ative){
-                        CreateMessage(request,registrarDB.get(c),"sip:gestor@acme.pt",content);
-                    }
+                    request.createResponse(403).send();
                 }
 
-                request.createResponse(200).send();
+
             }
             else if (verifyComum(request) && aorT.contains("alerta")) {
                 log("===========================================================================");
@@ -175,24 +185,6 @@ public class Redirect extends SipServlet {
 
         }
     }
-
-    //2ºparte do Projeto, Conferências
-    @Override
-    protected void doResponse(SipServletResponse sipServletResponse) throws ServletException, IOException {
-        String aor = getAttr(sipServletResponse.getHeader("To"), "sip:");
-
-        if (!registrarDB.containsKey(aor) & !verifyGestor(sipServletResponse.getRequest())) {
-            sipServletResponse.getRequest().createResponse(404).send();
-
-        } else {
-
-            sipServletResponse.getRequest().createResponse(200).send();
-
-        }
-
-    }
-
-
 
     /*@Override
     protected void doBye(SipServletRequest sipServletRequest) throws ServletException, IOException {
