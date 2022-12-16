@@ -76,7 +76,7 @@ public class Redirect extends SipServlet {
         String from = getAttr(request.getHeader("From"), "sip:");
 
         if (!registrarDB.containsKey(aor)) {
-            if (verifyComum(request) && registrarDB.containsKey("sip:gestor@acme.pt") && aor.equals("sip:alerta@acme.pt")) {
+            if (!from.contains("colaborador") && registrarDB.containsKey("sip:gestor@acme.pt") && aor.equals("sip:alerta@acme.pt")) {
                 request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get("sip:gestor@acme.pt")));
             } else if(aor.equals("sip:conference@acme.pt") && (from.equals("sip:gestor@acme.pt") || colaboradores_ative.contains(from))) {
                 request.getProxy().proxyTo(sipFactory.createURI("sip:conference@127.0.0.1:5070"));
@@ -84,8 +84,12 @@ public class Redirect extends SipServlet {
                 request.createResponse(404).send();
             }
         } else {
+            if(aor.equals("sip:gestor@acme.pt")){
+                request.createResponse(403).send();
+            } else {
+                request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get(aor)));
+            }
 
-            request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get(aor)));
         }
     }
 
