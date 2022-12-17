@@ -8,6 +8,7 @@ import java.util.Map;
 
 public class Redirect extends SipServlet {
     static private Map<String, String> registrarDB;
+    static private Map<String, Boolean> estadoDB;
     static private SipFactory sipFactory;
     static private ArrayList<String> colaboradores_ative;
     /**
@@ -18,11 +19,19 @@ public class Redirect extends SipServlet {
         sipFactory = (SipFactory) getServletContext().getAttribute(SIP_FACTORY);
         registrarDB = new HashMap<>();
         colaboradores_ative = new ArrayList<>();
+        estadoDB = new HashMap<>();
 
     }
 
     @Override
     protected void doRegister(SipServletRequest request) throws IOException {
+
+        if (!verifyDomain(request)) {
+            request.createResponse(403).send();
+            return;
+        }
+
+
         String toHeader = request.getHeader("To");
         String contactHeader = request.getHeader("Contact");
         String aor = getAttr(toHeader, "sip:");
@@ -30,6 +39,9 @@ public class Redirect extends SipServlet {
 
 
         String expires = request.getHeader("Expires");
+
+
+
         // linphone
         if (expires != null) {
 
@@ -38,6 +50,7 @@ public class Redirect extends SipServlet {
                 request.createResponse(200).send();
             } else {
                 if (verifyDomain(request)) {
+                    estadoDB.put(aor,true);
                     registrarDB.put(aor, contact);
                     request.createResponse(200).send();
                 } else {
@@ -55,6 +68,7 @@ public class Redirect extends SipServlet {
                 request.createResponse(200).send();
             } else {
                 if (verifyDomain(request)) {
+                    estadoDB.put(aor,true);
                     registrarDB.put(aor, contact);
                     request.createResponse(200).send();
                 } else {
@@ -72,8 +86,16 @@ public class Redirect extends SipServlet {
     //Aqui é que é feita a chamada
     @Override
     protected void doInvite(SipServletRequest request) throws IOException, TooManyHopsException, ServletParseException {
+
+        if (!verifyDomain(request)) {
+            request.createResponse(403).send();
+            return;
+        }
+
         String aor = getAttr(request.getHeader("To"), "sip:");
         String from = getAttr(request.getHeader("From"), "sip:");
+
+
 
         if (!registrarDB.containsKey(aor)) {
             if (!from.contains("colaborador") && registrarDB.containsKey("sip:gestor@acme.pt") && aor.equals("sip:alerta@acme.pt")) {
@@ -87,7 +109,11 @@ public class Redirect extends SipServlet {
             if(aor.equals("sip:gestor@acme.pt")){
                 request.createResponse(403).send();
             } else {
-                request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get(aor)));
+                if(!estadoDB.get(aor)){
+                    request.createResponse(404).send();
+                } else {
+                    request.getProxy().proxyTo(sipFactory.createURI(registrarDB.get(aor)));
+                }
             }
 
         }
@@ -98,8 +124,15 @@ public class Redirect extends SipServlet {
 
     @Override
     protected void doMessage(SipServletRequest request) throws ServletException, IOException {
+
+        if (!verifyDomain(request)) {
+            request.createResponse(403).send();
+            return;
+        }
+
         String aorT = getAttr(request.getHeader("To"), "sip:");
-        String aorF = getAttr(request.getHeader("From"), "sip:");
+
+
         if (registrarDB.containsKey(aorT) || aorT.contains("alerta")  ) {
             String content = request.getContent().toString();
             //Gestor para o Alerta
@@ -133,7 +166,13 @@ public class Redirect extends SipServlet {
                 }
                 /////////////////////////////////////////////////////////////////////////////////////////////////////
                 else if (content.contains("CONF")) {
+
+                    //vai chamar os colaboradores online
                     for (String c1 : colaboradores_ative){
+                        if (!estadoDB.get(c1)) {
+                            continue;
+                        }
+
                         SipServletRequest res = sipFactory.createRequest(
                                 request.getApplicationSession(),
                                 "MESSAGE",
@@ -184,16 +223,18 @@ public class Redirect extends SipServlet {
     //alteração do seu estado (ligado(188)/não-ligado(190))
     @Override
     protected void doPublish(SipServletRequest sipServletRequest) throws ServletException, IOException {
-        if (new String(sipServletRequest.getRawContent(), StandardCharsets.UTF_8).contains("<status><basic>open</basic></status>")) {
 
-
+        if (!verifyDomain(sipServletRequest)) {
+            sipServletRequest.createResponse(403).send();
+            return;
         }
-    }
 
-    /*@Override
-    protected void doBye(SipServletRequest sipServletRequest) throws ServletException, IOException {
-        super.doBye(sipServletRequest);
-    }*/
+        String aorF = getAttr(sipServletRequest.getHeader("From"), "sip:");
+
+        estadoDB.put(aorF, new String(sipServletRequest.getRawContent(), StandardCharsets.UTF_8).contains("open"));
+        sipServletRequest.createResponse(200).send();
+
+    }
 
 
     /**
